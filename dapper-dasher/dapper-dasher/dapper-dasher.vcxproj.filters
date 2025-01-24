@@ -19,4 +19,21 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="textures\12_nebula_spritesheet.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="textures\back-buildings.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="textures\far-buildings.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="textures\foreground.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="textures\scarfy.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
 </Project>

@@ -2,21 +2,50 @@
 #include "raylib.h"
 
 
+class spritesheet {
+    Rectangle* draw_rect_;
+    int rows_;
+    int columns_;
+    int total_frames_;
+    float frame_time_;
+    float curr_time_;
+    int curr_frame_;
+
+public:
+    spritesheet( const Rectangle* draw_rect, const int rows, const int columns, const int total_frames, const int frames_per_second ) {
+        draw_rect_ = const_cast< Rectangle* >(draw_rect);
+        rows_ = rows;
+        columns_ = columns;
+        total_frames_ = total_frames;
+        frame_time_ =  1.0f / static_cast< float >( frames_per_second );
+        curr_time_ = 0.0f;
+        curr_frame_ = 0;
+    }
+
+    void on_update() {
+        curr_time_ += GetFrameTime();
+        if ( curr_time_ > frame_time_ ) {
+            curr_time_ = 0;
+            curr_frame_ = ( curr_frame_ + 1 ) % total_frames_;
+            draw_rect_->x = static_cast< float >( curr_frame_ % columns_ ) * draw_rect_->width;
+            draw_rect_->y = static_cast< int >( curr_frame_ / rows_ ) * draw_rect_->height;
+        }
+    }
+};
+
 class scarfy
 {
     const int jump_force_{900}; // pixels/frame
     const int gravity_{2'000}; // (pixels/frame)/frame
     const int player_width_{128};
     const int player_height_{128};
-    const float update_frame_time_{1 / 10.0f};
     bool is_in_air_;
-    int index_ = 0;
     int velocity_{0};
     float player_ground_;
     float player_x_;
-    float timer_ = 0;
     Texture2D* texture_;
     Rectangle* rect_;
+    spritesheet* animation_;
     Vector2* pos_;
 
 public:
@@ -26,12 +55,14 @@ public:
         player_x_ = {static_cast<float>(window_width - player_width_) * 0.25f};
         texture_ = texture;
         is_in_air_ = false;
-        rect_ = new Rectangle {player_x_, 0, static_cast<float>(player_width_), static_cast<float>(player_height_)};
+        rect_ = new Rectangle {0, 0, static_cast<float>(player_width_), static_cast<float>(player_height_)};
         pos_ = new Vector2{player_x_, player_ground_};
+        animation_ = new spritesheet( rect_, 1, 6, 6, 6 );
     }
 
     ~scarfy()
     {
+        delete animation_;
         delete rect_;
         delete pos_;
     }
@@ -59,12 +90,9 @@ public:
 
         // Add Velocity to Position
         pos_->y += static_cast<float>(velocity_) * GetFrameTime();
-        timer_ += GetFrameTime();
-        if (timer_ > update_frame_time_ && !is_in_air_)
-        {
-            timer_ = 0;
-            index_ = (index_ + 1) % 6;
-            rect_->x = static_cast<float>(player_width_ * index_);
+
+        if ( !is_in_air_ ) {
+            animation_->on_update();
         }
     }
 
@@ -120,17 +148,12 @@ public:
 
 class nebula
 {
-    const int total_frame_ {60};
-    const int row_ {8};
-    const int columns {8};
-    int curr_frame_ {0};
-    float curr_time_ {0.0f};
-    float time_to_update_ {0.1f};
-    
     Texture2D* texture_;
-    Rectangle rect_;
+    Rectangle* rect_;
     Vector2 position_;
     float speed_;
+
+    spritesheet* animation_;
     
 
 public:
@@ -138,7 +161,8 @@ public:
     nebula()
     {
         texture_ = nullptr;
-        rect_ = {0,0,0,0};
+        animation_ = nullptr;
+        rect_ = nullptr;
         position_ = {0,0};
         speed_ = 0;
     }
@@ -147,53 +171,25 @@ public:
     {
         texture_ = const_cast<Texture2D*>(texture);
         position_ = position;
-        rect_ = {0,0,100,100};
+        rect_ = new Rectangle();
+        rect_->width = 100;
+        rect_->height = 100;
         speed_ = speed;
+        animation_ = new spritesheet( rect_, 8, 8, 60, 60 );
     }
 
-    nebula(const nebula& other)
-        : curr_frame_(other.curr_frame_), curr_time_(other.curr_time_), texture_(other.texture_),
-          rect_(other.rect_), position_(other.position_), speed_(other.speed_)
-    {
-    }
-
-    // Add copy assignment operator
-    nebula& operator=(const nebula& other)
-    {
-        if (this != &other)
-        {
-            texture_ = other.texture_;
-            rect_ = other.rect_;
-            position_ = other.position_;
-            curr_frame_ = other.curr_frame_;
-            curr_time_ = other.curr_time_;
-            speed_ = other.speed_;
-        }
-        return *this;
-    }
-
-    void update_sprite_frame()
-    {
-        curr_time_ += GetFrameTime();
-        if(curr_time_ > time_to_update_)
-        {
-            curr_time_ = 0;
-            curr_frame_ = (curr_frame_ + 1) % total_frame_;
-            rect_.x = static_cast<float>(curr_frame_ % row_) * rect_.width;
-            rect_.y = static_cast<int>(curr_frame_ / columns) * rect_.height;
-        }
-    }
+    
 
     void on_update()
     {
-        update_sprite_frame();
+        animation_->on_update();
         position_.x -= speed_ * GetFrameTime();
     }
 
     void on_draw() const
     {
         if(texture_ == nullptr) return;
-        DrawTextureRec(*texture_, rect_, position_, WHITE);
+        DrawTextureRec(*texture_, *rect_, position_, WHITE);
     }
 
     const Vector2* get_position() const
@@ -208,7 +204,7 @@ public:
 
     Rectangle get_rect() const
     {
-        return Rectangle{position_.x,position_.y, rect_.width,rect_.height};
+        return Rectangle{position_.x,position_.y, rect_->width,rect_->height};
     }
 };
 
@@ -228,9 +224,9 @@ int main()
     const Texture2D nebula_spritesheet = LoadTexture("./textures/12_nebula_spritesheet.png");
 
     scarfy player(window_width, window_height, &scarfy_texture);
-    const background far_building(50,window_width,window_height, &far_building_texture);
-    const background back_building(100,window_width,window_height, &back_building_texture);
-    const background foreground(200,window_width,window_height, &foreground_texture);
+    const background far_building(25,window_width,window_height, &far_building_texture);
+    const background back_building(50,window_width,window_height, &back_building_texture);
+    const background foreground(100,window_width,window_height, &foreground_texture);
     nebula nebula_arr[number_of_nebulae];
 
     int game_state {0}; // 0 -> In progress, 1 -> Game Finished [Success], 2 -> Game Over [Fail]
@@ -238,7 +234,7 @@ int main()
     for (size_t i = 0 ; i  < number_of_nebulae ; i++)
     {
         constexpr float nebulae_speed = 400;
-        const float x = static_cast<float>(window_width + i * 450); // Space them out by 300 pixels
+        const float x = static_cast<float>(window_width + i * 800); // Space them out by 800 pixels
         const float y = static_cast<float>(window_height - 150 + 10 * (i % 3)); // Vary y position slightly
         const Vector2 nebula_pos = {x, y};
         
@@ -251,15 +247,16 @@ int main()
     {
         BeginDrawing();
         ClearBackground(RAYWHITE);
-        far_building.on_update();
-        back_building.on_update();
-        foreground.on_update();
-        far_building.on_draw();
-        back_building.on_draw();
-        foreground.on_draw();
+        
         switch (game_state)
         {
         case 0:
+            far_building.on_update();
+            back_building.on_update();
+            foreground.on_update();
+            far_building.on_draw();
+            back_building.on_draw();
+            foreground.on_draw();
             player.on_update();
             for (auto& i : nebula_arr)
             {
@@ -295,6 +292,9 @@ int main()
         case 1:
 
             {
+            far_building.on_draw();
+            back_building.on_draw();
+            foreground.on_draw();
                 const auto escape = "You were able to escape";
                 const int width = MeasureText(escape, 20);
                 DrawText(escape, (window_width - width) /2, window_height/2,20,WHITE);
@@ -302,6 +302,9 @@ int main()
             break;
         case 2:
             {
+            far_building.on_draw();
+            back_building.on_draw();
+            foreground.on_draw();
                 const auto fail = "You were not able to escape";
                 const int width = MeasureText(fail, 20);
                 DrawText(fail, (window_width - width) /2, window_height/2,20,WHITE);
@@ -318,7 +321,7 @@ int main()
             {
                 for (size_t i = 0 ; i  < number_of_nebulae ; i++)
                 {
-                    const float x = static_cast<float>(window_width + i * 450); // Space them out by 300 pixels
+                    const float x = static_cast<float>(window_width + i * 800); // Space them out by 300 pixels
                     const float y = static_cast<float>(window_height - 150 + 10 * (i % 3)); // Vary y position slightly
                     const Vector2 nebula_pos = {x, y};
                     nebula_arr[i].set_position(nebula_pos);

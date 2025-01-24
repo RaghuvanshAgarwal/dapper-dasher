@@ -129,6 +129,13 @@
   <ItemGroup>
     <ClCompile Include="dapper-dasher.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="textures\12_nebula_spritesheet.png" />
+    <Image Include="textures\back-buildings.png" />
+    <Image Include="textures\far-buildings.png" />
+    <Image Include="textures\foreground.png" />
+    <Image Include="textures\scarfy.png" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
