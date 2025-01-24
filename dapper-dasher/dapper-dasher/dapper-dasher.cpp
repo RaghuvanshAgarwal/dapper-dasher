@@ -38,7 +38,7 @@ public:
             curr_time_ = 0;
             curr_frame_ = (curr_frame_ + 1) % total_frames_;
             draw_rect_->x = static_cast<float>(curr_frame_ % columns_) * draw_rect_->width;
-            draw_rect_->y = curr_frame_ / rows_ * draw_rect_->height;
+            draw_rect_->y = static_cast<int>(curr_frame_ / rows_) * draw_rect_->height;
         }
     }
 };
@@ -236,9 +236,12 @@ int main()
     const Texture2D nebula_spritesheet = LoadTexture("./textures/12_nebula_spritesheet.png");
 
     scarfy player(window_width, window_height, &scarfy_texture);
-    const background far_building(25, window_width, window_height, &far_building_texture);
-    const background back_building(50, window_width, window_height, &back_building_texture);
-    const background foreground(100, window_width, window_height, &foreground_texture);
+
+    background backgrounds[3] = {
+        {25, window_width, window_height, &far_building_texture},
+        {50, window_width, window_height, &back_building_texture},
+        {100, window_width, window_height, &foreground_texture}
+    };
     nebula nebula_arr[number_of_nebulae];
 
     int game_state{0}; // 0 -> In progress, 1 -> Game Finished [Success], 2 -> Game Over [Fail]
@@ -260,15 +263,17 @@ int main()
         BeginDrawing();
         ClearBackground(RAYWHITE);
 
+        // Update and draw all backgrounds
+        for (const auto& background : backgrounds)
+        {
+            background.on_update();
+            background.on_draw();
+        }
+
         switch (game_state)
         {
         case 0:
-            far_building.on_update();
-            back_building.on_update();
-            foreground.on_update();
-            far_building.on_draw();
-            back_building.on_draw();
-            foreground.on_draw();
+            
             player.on_update();
             for (auto& i : nebula_arr)
             {
@@ -285,6 +290,10 @@ int main()
             if (last_nebula->get_position()->x < -500)
             {
                 game_state = 1;
+                for (auto& background : backgrounds)
+                {
+                    background.set_speed(0);
+                }
             }
 
             for (const auto& i : nebula_arr)
@@ -295,6 +304,10 @@ int main()
                 Vector2 center = {position->x + (rect.width / 2), position->y + (rect.height / 2)};
                 if (CheckCollisionCircleRec(center, radius, player.get_rect()))
                 {
+                    for (auto& background : backgrounds)
+                    {
+                        background.set_speed(0);
+                    }
                     game_state = 2;
                 }
             }
@@ -304,9 +317,6 @@ int main()
         case 1:
 
             {
-                far_building.on_draw();
-                back_building.on_draw();
-                foreground.on_draw();
                 const auto escape = "You were able to escape";
                 const int width = MeasureText(escape, 20);
                 DrawText(escape, (window_width - width) / 2, window_height / 2, 20,WHITE);
@@ -314,9 +324,6 @@ int main()
             break;
         case 2:
             {
-                far_building.on_draw();
-                back_building.on_draw();
-                foreground.on_draw();
                 const auto fail = "You were not able to escape";
                 const int width = MeasureText(fail, 20);
                 DrawText(fail, (window_width - width) / 2, window_height / 2, 20,WHITE);
